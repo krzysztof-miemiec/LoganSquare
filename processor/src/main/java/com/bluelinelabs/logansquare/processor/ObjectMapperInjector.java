@@ -62,7 +62,7 @@ public class ObjectMapperInjector {
         builder.superclass(ParameterizedTypeName.get(ClassName.get(JsonMapper.class), mJsonObjectHolder.objectTypeName));
 
         for (TypeParameterElement typeParameterElement : mJsonObjectHolder.typeParameters) {
-            builder.addTypeVariable(TypeVariableName.get((TypeVariable)typeParameterElement.asType()));
+            builder.addTypeVariable(TypeVariableName.get((TypeVariable) typeParameterElement.asType()));
         }
 
         if (mJsonObjectHolder.hasParentClass()) {
@@ -84,11 +84,17 @@ public class ObjectMapperInjector {
             builder.addField(parentMapperBuilder.build());
         }
 
+        boolean isUpdatable = !TextUtils.isEmpty(mJsonObjectHolder.getObjectByKeyCallback);
+
+        if (isUpdatable) {
+            addUpdateFieldFlags(builder);
+        }
+
         // TypeConverters could be expensive to create, so just use one per class
         Set<ClassName> typeConvertersUsed = new HashSet<>();
         for (JsonFieldHolder fieldHolder : mJsonObjectHolder.fieldMap.values()) {
             if (fieldHolder.type instanceof TypeConverterFieldType) {
-                typeConvertersUsed.add(((TypeConverterFieldType)fieldHolder.type).getTypeConverterClassName());
+                typeConvertersUsed.add(((TypeConverterFieldType) fieldHolder.type).getTypeConverterClassName());
             }
         }
         for (ClassName typeConverter : typeConvertersUsed) {
@@ -127,7 +133,7 @@ public class ObjectMapperInjector {
 
         for (JsonFieldHolder jsonFieldHolder : mJsonObjectHolder.fieldMap.values()) {
             if (jsonFieldHolder.type instanceof ParameterizedTypeField) {
-                final String jsonMapperVariableName = getJsonMapperVariableNameForTypeParameter(((ParameterizedTypeField)jsonFieldHolder.type).getParameterName());
+                final String jsonMapperVariableName = getJsonMapperVariableNameForTypeParameter(((ParameterizedTypeField) jsonFieldHolder.type).getParameterName());
 
                 if (!createdJsonMappers.contains(jsonMapperVariableName)) {
                     ParameterizedTypeName parameterizedType = ParameterizedTypeName.get(ClassName.get(JsonMapper.class), jsonFieldHolder.type.getTypeName());
@@ -160,16 +166,15 @@ public class ObjectMapperInjector {
             builder.addMethod(constructorBuilder.build());
         }
 
-        builder.addMethod(getParseMethod());
-        builder.addMethod(getParseFieldMethod());
+        builder.addMethod(getParseMethod(isUpdatable));
+        builder.addMethod(getParseFieldMethod(isUpdatable));
         builder.addMethod(getSerializeMethod());
         addUsedJsonMapperVariables(builder);
         addUsedTypeConverterMethods(builder);
-
         return builder.build();
     }
 
-    private MethodSpec getParseMethod() {
+    private MethodSpec getParseMethod(boolean isUpdatable) {
         MethodSpec.Builder builder = MethodSpec.methodBuilder("parse")
                 .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC)
@@ -193,6 +198,51 @@ public class ObjectMapperInjector {
                     .addStatement("$L.skipChildren()", JSON_PARSER_VARIABLE_NAME)
                     .endControlFlow();
 
+            if (isUpdatable) {
+                JsonFieldHolder keyField = null;
+                for (JsonFieldHolder holder : mJsonObjectHolder.fieldMap.values()) {
+                    if (holder.isKey()) {
+                        keyField = holder;
+                        break;
+                    }
+                }
+                if (keyField == null) {
+                    throw new RuntimeException("Missing @JsonField with @JsonKey annotation for getByKey() method");
+                }
+
+
+                StringBuilder stringBuilder = new StringBuilder(
+                        "$T sourceInstance = instance.$L(instance.");
+                if (keyField.hasGetter()) {
+                    stringBuilder.append(keyField.getterMethod);
+                    stringBuilder.append("()");
+                } else {
+                    stringBuilder.append(keyField.fieldName[0]);
+                }
+                stringBuilder.append(")");
+
+                builder.addStatement(stringBuilder.toString(), mJsonObjectHolder.objectTypeName,
+                        mJsonObjectHolder.getObjectByKeyCallback)
+                        .beginControlFlow("if(sourceInstance != null)");
+                for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
+                    String fieldName = entry.getKey();
+                    JsonFieldHolder fieldHolder = entry.getValue();
+                    builder.beginControlFlow("if(!" + getIsFieldSetName(fieldName) + ")");
+                    String getter;
+                    if (fieldHolder.hasGetter()) {
+                        getter = "sourceInstance." + fieldHolder.getterMethod + "()";
+                    } else {
+                        getter = "sourceInstance." + fieldName;
+                    }
+                    if (fieldHolder.hasSetter()) {
+                        builder.addStatement("instance.$L($L)", fieldHolder.setterMethod, getter);
+                    } else {
+                        builder.addStatement("instance.$L = $L", fieldName, getter);
+                    }
+                    builder.endControlFlow();
+                }
+                builder.endControlFlow();
+            }
             if (!TextUtils.isEmpty(mJsonObjectHolder.onCompleteCallback)) {
                 builder.addStatement("instance.$L()", mJsonObjectHolder.onCompleteCallback);
             }
@@ -205,7 +255,7 @@ public class ObjectMapperInjector {
         return builder.build();
     }
 
-    private MethodSpec getParseFieldMethod() {
+    private MethodSpec getParseFieldMethod(boolean isUpdatable) {
         MethodSpec.Builder builder = MethodSpec.methodBuilder("parseField")
                 .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC)
@@ -214,7 +264,7 @@ public class ObjectMapperInjector {
                 .addParameter(JsonParser.class, JSON_PARSER_VARIABLE_NAME)
                 .addException(IOException.class);
 
-        int parseFieldLines = addParseFieldLines(builder);
+        int parseFieldLines = addParseFieldLines(builder, isUpdatable);
 
         if (mJsonObjectHolder.hasParentClass()) {
             if (parseFieldLines > 0) {
@@ -282,7 +332,20 @@ public class ObjectMapperInjector {
                 .endControlFlow();
     }
 
-    private int addParseFieldLines(MethodSpec.Builder builder) {
+    private void addUpdateFieldFlags(TypeSpec.Builder builder) {
+        for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
+            builder.addField(FieldSpec.builder(TypeName.BOOLEAN, getIsFieldSetName(entry.getKey()), Modifier.PRIVATE).build());
+        }
+    }
+
+    private String getIsFieldSetName(String name) {
+        if (name.length() > 0) {
+            name = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        }
+        return "is" + name + "Set";
+    }
+
+    private int addParseFieldLines(MethodSpec.Builder builder, boolean isUpdatable) {
         int entryCount = 0;
         for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
             JsonFieldHolder fieldHolder = entry.getValue();
@@ -311,15 +374,18 @@ public class ObjectMapperInjector {
                 Object[] stringFormatArgs;
                 if (fieldHolder.hasSetter()) {
                     setter = "instance.$L($L)";
-                    stringFormatArgs = new Object[] { fieldHolder.setterMethod };
+                    stringFormatArgs = new Object[]{fieldHolder.setterMethod};
                 } else {
                     setter = "instance.$L = $L";
-                    stringFormatArgs = new Object[] { entry.getKey() };
+                    stringFormatArgs = new Object[]{entry.getKey()};
                 }
 
                 if (fieldHolder.type != null) {
                     setFieldHolderJsonMapperVariableName(fieldHolder.type);
                     fieldHolder.type.parse(builder, 1, setter, stringFormatArgs);
+                    if (isUpdatable) {
+                        builder.addStatement(getIsFieldSetName(entry.getKey()) + " = true");
+                    }
                 }
 
                 entryCount++;
@@ -386,7 +452,7 @@ public class ObjectMapperInjector {
 
     private void setFieldHolderJsonMapperVariableName(Type type) {
         if (type instanceof ParameterizedTypeField) {
-            ParameterizedTypeField parameterizedType = (ParameterizedTypeField)type;
+            ParameterizedTypeField parameterizedType = (ParameterizedTypeField) type;
             parameterizedType.setJsonMapperVariableName(getJsonMapperVariableNameForTypeParameter(parameterizedType.getParameterName()));
         }
 

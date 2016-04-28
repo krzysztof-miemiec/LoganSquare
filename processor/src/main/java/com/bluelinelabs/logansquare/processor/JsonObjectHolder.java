@@ -30,6 +30,7 @@ public class JsonObjectHolder {
     public final List<? extends TypeParameterElement> typeParameters;
     public String onCompleteCallback;
     public String preSerializeCallback;
+    public String getObjectByKeyCallback;
 
     // Using a TreeMap now to keep the entries sorted. This ensures that code is
     // always written the exact same way, no matter which JDK you're using.

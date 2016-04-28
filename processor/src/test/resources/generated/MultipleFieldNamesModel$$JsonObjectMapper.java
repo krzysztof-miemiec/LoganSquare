@@ -21,6 +21,7 @@ public final class MultipleFieldNamesModel$$JsonObjectMapper extends JsonMapper<
             jsonParser.skipChildren();
             return null;
         }
+        jsonParser.
         while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
             String fieldName = jsonParser.getCurrentName();
             jsonParser.nextToken();

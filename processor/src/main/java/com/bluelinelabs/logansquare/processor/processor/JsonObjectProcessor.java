@@ -5,6 +5,7 @@ import com.bluelinelabs.logansquare.annotation.JsonIgnore;
 import com.bluelinelabs.logansquare.annotation.JsonIgnore.IgnorePolicy;
 import com.bluelinelabs.logansquare.annotation.JsonObject;
 import com.bluelinelabs.logansquare.annotation.JsonObject.FieldDetectionPolicy;
+import com.bluelinelabs.logansquare.annotation.JsonKey;
 import com.bluelinelabs.logansquare.processor.JsonFieldHolder;
 import com.bluelinelabs.logansquare.processor.JsonObjectHolder;
 import com.bluelinelabs.logansquare.processor.JsonObjectHolder.JsonObjectHolderBuilder;
@@ -62,7 +63,7 @@ public class JsonObjectProcessor extends Processor {
     }
 
     private void processJsonObjectAnnotation(Element element, Map<String, JsonObjectHolder> jsonObjectMap, Elements elements, Types types) {
-        TypeElement typeElement = (TypeElement)element;
+        TypeElement typeElement = (TypeElement) element;
 
         if (element.getModifiers().contains(PRIVATE)) {
             error(element, "%s: %s annotation can't be used on private classes.", typeElement.getQualifiedName(), JsonObject.class.getSimpleName());
@@ -80,7 +81,7 @@ public class JsonObjectProcessor extends Processor {
 
             TypeMirror superclass = typeElement.getSuperclass();
             if (superclass.getKind() != TypeKind.NONE) {
-                TypeElement superclassElement = (TypeElement)types.asElement(superclass);
+                TypeElement superclassElement = (TypeElement) types.asElement(superclass);
                 if (superclassElement.getAnnotation(JsonObject.class) != null) {
                     if (superclassElement.getTypeParameters() != null) {
                         parentTypeParameters = superclassElement.getTypeParameters();
@@ -95,7 +96,7 @@ public class JsonObjectProcessor extends Processor {
                 }
             }
             while (superclass.getKind() != TypeKind.NONE) {
-                TypeElement superclassElement = (TypeElement)types.asElement(superclass);
+                TypeElement superclassElement = (TypeElement) types.asElement(superclass);
 
                 if (superclassElement.getAnnotation(JsonObject.class) != null) {
                     String superclassPackageName = elements.getPackageOf(superclassElement).getQualifiedName().toString();
@@ -170,8 +171,10 @@ public class JsonObjectProcessor extends Processor {
 
     private void createOrUpdateFieldHolder(Element element, Elements elements, Types types, JsonObjectHolder objectHolder) {
         JsonIgnore ignoreAnnotation = element.getAnnotation(JsonIgnore.class);
+        JsonKey objectKeyAnnotation = element.getAnnotation(JsonKey.class);
         boolean shouldParse = ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.SERIALIZE_ONLY;
         boolean shouldSerialize = ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.PARSE_ONLY;
+        boolean isKey = objectKeyAnnotation == null;
 
         if (shouldParse || shouldSerialize) {
             JsonFieldHolder fieldHolder = objectHolder.fieldMap.get(element.getSimpleName().toString());
@@ -180,7 +183,7 @@ public class JsonObjectProcessor extends Processor {
                 objectHolder.fieldMap.put(element.getSimpleName().toString(), fieldHolder);
             }
 
-            String error = fieldHolder.fill(element, elements, types, null, null, objectHolder, shouldParse, shouldSerialize);
+            String error = fieldHolder.fill(element, elements, types, null, null, objectHolder, shouldParse, shouldSerialize, isKey);
             if (!TextUtils.isEmpty(error)) {
                 error(element, error);
             }

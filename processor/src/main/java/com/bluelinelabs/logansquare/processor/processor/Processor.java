@@ -28,6 +28,7 @@ public abstract class Processor {
         List<Processor> list = new ArrayList<>();
         list.add(new JsonObjectProcessor(processingEnvironment));
         list.add(new OnJsonParseCompleteProcessor(processingEnvironment));
+        list.add(new OnJsonGetObjectByKeyProcessor(processingEnvironment));
         list.add(new OnPreSerializeProcessor(processingEnvironment));
         list.add(new JsonFieldProcessor(processingEnvironment));
         return list;
