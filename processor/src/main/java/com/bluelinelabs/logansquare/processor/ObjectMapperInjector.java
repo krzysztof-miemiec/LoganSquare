@@ -295,7 +295,7 @@ public class ObjectMapperInjector {
                 String mapperName = getMapperVariableName(fieldHolder.type.getTypeName()+ Constants.MAPPER_CLASS_SUFFIX);
 
                 builder.beginControlFlow("if(" + getter + " != null)")
-                        .addStatement("$L.parseComplete(instance, " + getter + ")", mapperName)
+                        .addStatement("$L.endParse(instance, " + getter + ")", mapperName)
                         .endControlFlow();
             }
         }
