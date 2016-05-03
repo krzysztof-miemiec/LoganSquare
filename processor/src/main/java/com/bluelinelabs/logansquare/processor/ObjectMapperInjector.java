@@ -290,9 +290,9 @@ public class ObjectMapperInjector {
                 } else {
                     getter = "instance." + fieldName;
                 }
-                String typeConverterName = getTypeConverterVariableName(fieldHolder.type.getTypeName()).toUpperCase();
+                String mapperName = getJsonMapperVariableNameForTypeParameter(fieldHolder.type.getTypeName().toString()).toUpperCase();
                 builder.beginControlFlow("if(" + getter + " != null)")
-                        .addStatement("$L.parseComplete(instance, " + getter + ")", typeConverterName)
+                        .addStatement("$L.parseComplete(instance, " + getter + ")", mapperName)
                         .endControlFlow();
             }
         }
