@@ -41,6 +41,8 @@ public abstract class JsonMapper<T> {
      */
     public abstract void serialize(T object, JsonGenerator generator, boolean writeStartAndEnd) throws IOException;
 
+    public void endParse(){}
+
     /**
      * Parse an object from an InputStream.
      *
