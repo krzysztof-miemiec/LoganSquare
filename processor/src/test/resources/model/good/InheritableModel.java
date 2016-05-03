@@ -3,9 +3,10 @@ package com.bluelinelabs.logansquare.processor;
 import com.bluelinelabs.logansquare.annotation.JsonField;
 import com.bluelinelabs.logansquare.annotation.JsonGetByKey;
 import com.bluelinelabs.logansquare.annotation.JsonObject;
+import com.bluelinelabs.logansquare.annotation.OnJsonInherit;
 
 @JsonObject
-public class UpdatableModel {
+public class InheritableModel {
 
     @JsonField(isKey = true)
     public String string;
@@ -22,12 +23,14 @@ public class UpdatableModel {
     @JsonField(name = "test_double")
     public double testDouble;
 
-    @JsonField(inherits = true)
-    public InheritableModel testModel;
+    @OnJsonInherit
+    public void inherit(UpdatableModel model) {
+        testInt = model.testInt;
+    }
 
     @JsonGetByKey
-    public UpdatableModel jsonGetByKey(String string) {
-        UpdatableModel model = new UpdatableModel();
+    public InheritableModel jsonGetByKey(String string) {
+        InheritableModel model = new InheritableModel();
         model.testInt = 60;
         model.string = "abc";
         return model;

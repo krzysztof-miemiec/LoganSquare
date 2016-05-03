@@ -54,7 +54,7 @@ public class JsonObjectHolder {
                     usedParameters.add(TypeVariableName.get(parameter));
                 }
             }
-            return ParameterizedTypeName.get((ClassName)parentTypeName, usedParameters.toArray(new TypeName[usedParameters.size()]));
+            return ParameterizedTypeName.get((ClassName) parentTypeName, usedParameters.toArray(new TypeName[usedParameters.size()]));
         } else {
             return parentTypeName;
         }

@@ -1,5 +1,6 @@
 package com.bluelinelabs.logansquare.processor;
 
+import com.bluelinelabs.logansquare.Constants;
 import com.bluelinelabs.logansquare.JsonMapper;
 import com.bluelinelabs.logansquare.LoganSquare;
 import com.bluelinelabs.logansquare.ParameterizedType;
@@ -290,7 +291,9 @@ public class ObjectMapperInjector {
                 } else {
                     getter = "instance." + fieldName;
                 }
-                String mapperName = getJsonMapperVariableNameForTypeParameter(fieldHolder.type.getTypeName().toString()).toUpperCase();
+
+                String mapperName = getMapperVariableName(fieldHolder.type.getTypeName()+ Constants.MAPPER_CLASS_SUFFIX);
+
                 builder.beginControlFlow("if(" + getter + " != null)")
                         .addStatement("$L.parseComplete(instance, " + getter + ")", mapperName)
                         .endControlFlow();
