@@ -4,7 +4,6 @@ import com.bluelinelabs.logansquare.annotation.JsonField;
 import com.bluelinelabs.logansquare.annotation.JsonIgnore;
 import com.bluelinelabs.logansquare.annotation.JsonIgnore.IgnorePolicy;
 import com.bluelinelabs.logansquare.annotation.JsonObject;
-import com.bluelinelabs.logansquare.annotation.JsonKey;
 import com.bluelinelabs.logansquare.processor.JsonFieldHolder;
 import com.bluelinelabs.logansquare.processor.JsonObjectHolder;
 import com.bluelinelabs.logansquare.processor.TextUtils;
@@ -69,6 +68,7 @@ public class JsonFieldProcessor extends Processor {
         if (fieldHolder == null) {
             fieldHolder = new JsonFieldHolder();
             objectHolder.fieldMap.put(element.getSimpleName().toString(), fieldHolder);
+
         }
 
         JsonField annotation = element.getAnnotation(JsonField.class);
@@ -83,12 +83,12 @@ public class JsonFieldProcessor extends Processor {
         String[] fieldName = annotation.name();
 
         JsonIgnore ignoreAnnotation = element.getAnnotation(JsonIgnore.class);
-        JsonKey objectKeyAnnotation = element.getAnnotation(JsonKey.class);
         boolean shouldParse = ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.SERIALIZE_ONLY;
         boolean shouldSerialize = ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.PARSE_ONLY;
-        boolean isObjectKey = objectKeyAnnotation != null;
+        boolean isKey = annotation.isKey();
+        boolean inherits = annotation.inherits();
 
-        String error = fieldHolder.fill(element, elements, types, fieldName, typeConverterType, objectHolder, shouldParse, shouldSerialize, isObjectKey);
+        String error = fieldHolder.fill(element, elements, types, fieldName, typeConverterType, objectHolder, shouldParse, shouldSerialize, isKey, inherits);
         if (!TextUtils.isEmpty(error)) {
             error(element, error);
         }

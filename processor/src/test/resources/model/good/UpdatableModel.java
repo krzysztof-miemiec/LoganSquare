@@ -2,14 +2,12 @@ package com.bluelinelabs.logansquare.processor;
 
 import com.bluelinelabs.logansquare.annotation.JsonField;
 import com.bluelinelabs.logansquare.annotation.JsonGetByKey;
-import com.bluelinelabs.logansquare.annotation.JsonKey;
 import com.bluelinelabs.logansquare.annotation.JsonObject;
 
 @JsonObject
 public class UpdatableModel {
 
-    @JsonKey
-    @JsonField
+    @JsonField(isKey = true)
     public String string;
 
     @JsonField(name = "test_int")

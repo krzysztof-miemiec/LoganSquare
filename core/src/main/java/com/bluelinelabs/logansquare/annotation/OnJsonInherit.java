@@ -3,21 +3,18 @@ package com.bluelinelabs.logansquare.annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.CLASS;
 
 /**
- * Declare a field that is a key for this Java object.
+ * Declare that a method should be called once a class has been parsed from JSON.
  * <pre><code>
- * {@literal @}JsonObject
- * public class MyClass {
+ * {@literal @}OnJsonParseComplete
+ * public void postParseMethod() {
  *     ...
  * }
  * </code></pre>
- *
- * @author Krzysztof Miemiec
  */
-@Target(FIELD)
+@Target(METHOD)
 @Retention(CLASS)
-public @interface JsonKey {
-}
+public @interface OnJsonInherit { }

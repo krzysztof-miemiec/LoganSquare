@@ -26,4 +26,7 @@ public @interface JsonField {
     /** The TypeConverter that will be used to parse/serialize this variable. */
     Class typeConverter() default void.class;
 
+    boolean isKey() default false;
+
+    boolean inherits() default false;
 }

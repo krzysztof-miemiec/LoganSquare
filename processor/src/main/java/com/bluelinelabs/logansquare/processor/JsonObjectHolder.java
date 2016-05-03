@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeParameterElement;
 
 public class JsonObjectHolder {
@@ -29,8 +30,10 @@ public class JsonObjectHolder {
     public final boolean serializeNullCollectionElements;
     public final List<? extends TypeParameterElement> typeParameters;
     public String onCompleteCallback;
+    public ExecutableElement onInheritCallback;
     public String preSerializeCallback;
     public String getObjectByKeyCallback;
+    public boolean inheritsFromParent;
 
     // Using a TreeMap now to keep the entries sorted. This ensures that code is
     // always written the exact same way, no matter which JDK you're using.

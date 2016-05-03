@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.TypeVariable;
@@ -167,6 +168,9 @@ public class ObjectMapperInjector {
         }
 
         builder.addMethod(getParseMethod(isUpdatable));
+        if (mJsonObjectHolder.inheritsFromParent) {
+            builder.addMethod(getEndParseMethod(isUpdatable));
+        }
         builder.addMethod(getParseFieldMethod(isUpdatable));
         builder.addMethod(getSerializeMethod());
         addUsedJsonMapperVariables(builder);
@@ -197,62 +201,104 @@ public class ObjectMapperInjector {
                     .addStatement("parseField(instance, fieldName, $L)", JSON_PARSER_VARIABLE_NAME)
                     .addStatement("$L.skipChildren()", JSON_PARSER_VARIABLE_NAME)
                     .endControlFlow();
-
-            if (isUpdatable) {
-                JsonFieldHolder keyField = null;
-                for (JsonFieldHolder holder : mJsonObjectHolder.fieldMap.values()) {
-                    if (holder.isKey()) {
-                        keyField = holder;
-                        break;
-                    }
-                }
-                if (keyField == null) {
-                    throw new RuntimeException("Missing @JsonField with @JsonKey annotation for getByKey() method");
-                }
-
-
-                StringBuilder stringBuilder = new StringBuilder(
-                        "$T sourceInstance = instance.$L(instance.");
-                if (keyField.hasGetter()) {
-                    stringBuilder.append(keyField.getterMethod);
-                    stringBuilder.append("()");
-                } else {
-                    stringBuilder.append(keyField.fieldName[0]);
-                }
-                stringBuilder.append(")");
-
-                builder.addStatement(stringBuilder.toString(), mJsonObjectHolder.objectTypeName,
-                        mJsonObjectHolder.getObjectByKeyCallback)
-                        .beginControlFlow("if(sourceInstance != null)");
-                for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
-                    String fieldName = entry.getKey();
-                    JsonFieldHolder fieldHolder = entry.getValue();
-                    builder.beginControlFlow("if(!" + getIsFieldSetName(fieldName) + ")");
-                    String getter;
-                    if (fieldHolder.hasGetter()) {
-                        getter = "sourceInstance." + fieldHolder.getterMethod + "()";
-                    } else {
-                        getter = "sourceInstance." + fieldName;
-                    }
-                    if (fieldHolder.hasSetter()) {
-                        builder.addStatement("instance.$L($L)", fieldHolder.setterMethod, getter);
-                    } else {
-                        builder.addStatement("instance.$L = $L", fieldName, getter);
-                    }
-                    builder.endControlFlow();
-                }
-                builder.endControlFlow();
+            if (!mJsonObjectHolder.inheritsFromParent) {
+                endParseMethod(builder, isUpdatable);
             }
-            if (!TextUtils.isEmpty(mJsonObjectHolder.onCompleteCallback)) {
-                builder.addStatement("instance.$L()", mJsonObjectHolder.onCompleteCallback);
-            }
-
             builder.addStatement("return instance");
         } else {
             builder.addStatement("return null");
         }
 
         return builder.build();
+    }
+
+    private MethodSpec getEndParseMethod(boolean isUpdatable) {
+        MethodSpec.Builder builder = MethodSpec.methodBuilder("endParse")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(Object.class, "parentInstance")
+                .addParameter(mJsonObjectHolder.objectTypeName, "instance")
+                .addException(IOException.class)
+                .returns(TypeName.VOID);
+
+        if (mJsonObjectHolder.onInheritCallback != null) {
+            ExecutableElement inheritCallback = mJsonObjectHolder.onInheritCallback;
+            String parentType = inheritCallback.getParameters().get(0).asType().toString();
+            if ("Object".equals(parentType)) {
+                parentType = "";
+            } else {
+                parentType = '(' + parentType + ") ";
+            }
+            builder.addStatement("instance.$L(" + parentType + "parentInstance)", inheritCallback.getSimpleName().toString());
+        }
+        endParseMethod(builder, isUpdatable);
+        return builder.build();
+    }
+
+    private void endParseMethod(MethodSpec.Builder builder, boolean isUpdatable) {
+        if (isUpdatable) {
+            JsonFieldHolder keyField = null;
+            for (JsonFieldHolder holder : mJsonObjectHolder.fieldMap.values()) {
+                if (holder.isKey()) {
+                    keyField = holder;
+                    break;
+                }
+            }
+            if (keyField == null) {
+                throw new RuntimeException("Missing @JsonField with @JsonKey annotation for getByKey() method");
+            }
+
+
+            StringBuilder stringBuilder = new StringBuilder(
+                    "$T sourceInstance = instance.$L(instance.");
+            if (keyField.hasGetter()) {
+                stringBuilder.append(keyField.getterMethod);
+                stringBuilder.append("()");
+            } else {
+                stringBuilder.append(keyField.fieldName[0]);
+            }
+            stringBuilder.append(")");
+
+            builder.addStatement(stringBuilder.toString(), mJsonObjectHolder.objectTypeName,
+                    mJsonObjectHolder.getObjectByKeyCallback)
+                    .beginControlFlow("if(sourceInstance != null)");
+            for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
+                String fieldName = entry.getKey();
+                JsonFieldHolder fieldHolder = entry.getValue();
+                builder.beginControlFlow("if(!" + getIsFieldSetName(fieldName) + ")");
+                String getter;
+                if (fieldHolder.hasGetter()) {
+                    getter = "sourceInstance." + fieldHolder.getterMethod + "()";
+                } else {
+                    getter = "sourceInstance." + fieldName;
+                }
+                if (fieldHolder.hasSetter()) {
+                    builder.addStatement("instance.$L($L)", fieldHolder.setterMethod, getter);
+                } else {
+                    builder.addStatement("instance.$L = $L", fieldName, getter);
+                }
+                builder.endControlFlow();
+            }
+            builder.endControlFlow();
+        }
+        for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
+
+            JsonFieldHolder fieldHolder = entry.getValue();
+            if (fieldHolder.inherits) {
+                String fieldName = entry.getKey(), getter;
+                if (fieldHolder.hasGetter()) {
+                    getter = "instance." + fieldHolder.getterMethod + "()";
+                } else {
+                    getter = "instance." + fieldName;
+                }
+                String typeConverterName = getStaticFinalTypeConverterVariableName(fieldHolder.type.getTypeName());
+                builder.beginControlFlow("if(" + getter + " != null)")
+                        .addStatement("$L.parseComplete(instance, " + getter + ")", typeConverterName)
+                        .endControlFlow();
+            }
+        }
+        if (!TextUtils.isEmpty(mJsonObjectHolder.onCompleteCallback)) {
+            builder.addStatement("instance.$L()", mJsonObjectHolder.onCompleteCallback);
+        }
     }
 
     private MethodSpec getParseFieldMethod(boolean isUpdatable) {

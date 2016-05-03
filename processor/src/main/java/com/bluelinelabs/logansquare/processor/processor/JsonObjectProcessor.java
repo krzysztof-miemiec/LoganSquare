@@ -1,11 +1,11 @@
 package com.bluelinelabs.logansquare.processor.processor;
 
 import com.bluelinelabs.logansquare.Constants;
+import com.bluelinelabs.logansquare.annotation.JsonField;
 import com.bluelinelabs.logansquare.annotation.JsonIgnore;
 import com.bluelinelabs.logansquare.annotation.JsonIgnore.IgnorePolicy;
 import com.bluelinelabs.logansquare.annotation.JsonObject;
 import com.bluelinelabs.logansquare.annotation.JsonObject.FieldDetectionPolicy;
-import com.bluelinelabs.logansquare.annotation.JsonKey;
 import com.bluelinelabs.logansquare.processor.JsonFieldHolder;
 import com.bluelinelabs.logansquare.processor.JsonObjectHolder;
 import com.bluelinelabs.logansquare.processor.JsonObjectHolder.JsonObjectHolderBuilder;
@@ -170,20 +170,21 @@ public class JsonObjectProcessor extends Processor {
     }
 
     private void createOrUpdateFieldHolder(Element element, Elements elements, Types types, JsonObjectHolder objectHolder) {
+        JsonField annotation = element.getAnnotation(JsonField.class);
         JsonIgnore ignoreAnnotation = element.getAnnotation(JsonIgnore.class);
-        JsonKey objectKeyAnnotation = element.getAnnotation(JsonKey.class);
         boolean shouldParse = ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.SERIALIZE_ONLY;
         boolean shouldSerialize = ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.PARSE_ONLY;
-        boolean isKey = objectKeyAnnotation == null;
+        boolean isKey = annotation.isKey();
+        boolean inherits = annotation.inherits();
 
-        if (shouldParse || shouldSerialize) {
+        if (shouldParse || shouldSerialize || isKey || inherits) {
             JsonFieldHolder fieldHolder = objectHolder.fieldMap.get(element.getSimpleName().toString());
             if (fieldHolder == null) {
                 fieldHolder = new JsonFieldHolder();
                 objectHolder.fieldMap.put(element.getSimpleName().toString(), fieldHolder);
             }
 
-            String error = fieldHolder.fill(element, elements, types, null, null, objectHolder, shouldParse, shouldSerialize, isKey);
+            String error = fieldHolder.fill(element, elements, types, null, null, objectHolder, shouldParse, shouldSerialize, isKey, inherits);
             if (!TextUtils.isEmpty(error)) {
                 error(element, error);
             }

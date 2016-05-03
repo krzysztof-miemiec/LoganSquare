@@ -20,7 +20,9 @@ import static java.lang.annotation.RetentionPolicy.CLASS;
 public @interface JsonObject {
 
     public enum FieldDetectionPolicy {
-        /** Only parse and serialize fields annotated with @JsonField */
+        /**
+         * Only parse and serialize fields annotated with @JsonField
+         */
         ANNOTATIONS_ONLY,
 
         /**
