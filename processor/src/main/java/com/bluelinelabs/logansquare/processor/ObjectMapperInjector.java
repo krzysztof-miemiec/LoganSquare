@@ -290,7 +290,7 @@ public class ObjectMapperInjector {
                 } else {
                     getter = "instance." + fieldName;
                 }
-                String typeConverterName = getStaticFinalTypeConverterVariableName(fieldHolder.type.getTypeName());
+                String typeConverterName = getTypeConverterVariableName(fieldHolder.type.getTypeName()).toUpperCase();
                 builder.beginControlFlow("if(" + getter + " != null)")
                         .addStatement("$L.parseComplete(instance, " + getter + ")", typeConverterName)
                         .endControlFlow();
