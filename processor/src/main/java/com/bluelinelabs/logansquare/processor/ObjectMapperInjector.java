@@ -168,25 +168,42 @@ public class ObjectMapperInjector {
             builder.addMethod(constructorBuilder.build());
         }
 
-        builder.addMethod(getParseMethod(isUpdatable));
+        builder.addMethod(getParseMethod(isUpdatable, false));
+        if (isUpdatable) {
+            builder.addMethod(getParseMethod(true, true));
+        }
         if (mJsonObjectHolder.inheritsFromParent) {
             builder.addMethod(getEndParseMethod(isUpdatable));
         }
-        builder.addMethod(getParseFieldMethod(isUpdatable));
+        builder.addMethod(getParseFieldMethod(false));
+        if (isUpdatable) {
+            builder.addMethod(getParseFieldMethod(true));
+            builder.addMethod(MethodSpec.methodBuilder("holder")
+                    .addAnnotation(Override.class)
+                    .addStatement("return new DataHolder()")
+                    .returns(TypeName.OBJECT)
+                    .build());
+        }
         builder.addMethod(getSerializeMethod());
         addUsedJsonMapperVariables(builder);
         addUsedTypeConverterMethods(builder);
         return builder.build();
     }
 
-    private MethodSpec getParseMethod(boolean isUpdatable) {
+    private MethodSpec getParseMethod(boolean isUpdatable, boolean isSecondary) {
         MethodSpec.Builder builder = MethodSpec.methodBuilder("parse")
                 .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC)
                 .returns(mJsonObjectHolder.objectTypeName)
-                .addParameter(JsonParser.class, JSON_PARSER_VARIABLE_NAME)
+                .addParameter(JsonParser.class, JSON_PARSER_VARIABLE_NAME);
+        if (isSecondary) {
+            builder.addParameter(TypeName.OBJECT, "dataHolderObject");
+        }
+        builder
                 .addException(IOException.class);
-
+        if (isSecondary) {
+            builder.addStatement("DataHolder dataHolder = (DataHolder) dataHolderObject");
+        }
         if (!mJsonObjectHolder.isAbstractClass) {
             builder.addStatement("$T instance = new $T()", mJsonObjectHolder.objectTypeName, mJsonObjectHolder.objectTypeName)
                     .beginControlFlow("if ($L.getCurrentToken() == null)", JSON_PARSER_VARIABLE_NAME)
@@ -195,11 +212,14 @@ public class ObjectMapperInjector {
                     .beginControlFlow("if ($L.getCurrentToken() != $T.START_OBJECT)", JSON_PARSER_VARIABLE_NAME, JsonToken.class)
                     .addStatement("$L.skipChildren()", JSON_PARSER_VARIABLE_NAME)
                     .addStatement("return null")
-                    .endControlFlow()
-                    .beginControlFlow("while ($L.nextToken() != $T.END_OBJECT)", JSON_PARSER_VARIABLE_NAME, JsonToken.class)
+                    .endControlFlow();
+            if (isUpdatable && !isSecondary) {
+                builder.addStatement("DataHolder dataHolder = new DataHolder()");
+            }
+            builder.beginControlFlow("while ($L.nextToken() != $T.END_OBJECT)", JSON_PARSER_VARIABLE_NAME, JsonToken.class)
                     .addStatement("String fieldName = $L.getCurrentName()", JSON_PARSER_VARIABLE_NAME)
                     .addStatement("$L.nextToken()", JSON_PARSER_VARIABLE_NAME)
-                    .addStatement("parseField(instance, fieldName, $L)", JSON_PARSER_VARIABLE_NAME)
+                    .addStatement("parseField(instance, fieldName, $L" + (isUpdatable ? ", dataHolder" : "") + ")", JSON_PARSER_VARIABLE_NAME)
                     .addStatement("$L.skipChildren()", JSON_PARSER_VARIABLE_NAME)
                     .endControlFlow();
             if (!mJsonObjectHolder.inheritsFromParent) {
@@ -215,9 +235,11 @@ public class ObjectMapperInjector {
 
     private MethodSpec getEndParseMethod(boolean isUpdatable) {
         MethodSpec.Builder builder = MethodSpec.methodBuilder("endParse")
+                .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(Object.class, "parentInstance")
                 .addParameter(mJsonObjectHolder.objectTypeName, "instance")
+                .addParameter(TypeName.OBJECT, "dataObject")
                 .addException(IOException.class)
                 .returns(TypeName.VOID);
 
@@ -265,7 +287,7 @@ public class ObjectMapperInjector {
             for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
                 String fieldName = entry.getKey();
                 JsonFieldHolder fieldHolder = entry.getValue();
-                builder.beginControlFlow("if(!" + getIsFieldSetName(fieldName) + ")");
+                builder.beginControlFlow("if(!dataHolder." + getIsFieldSetName(fieldName) + ")");
                 String getter;
                 if (fieldHolder.hasGetter()) {
                     getter = "sourceInstance." + fieldHolder.getterMethod + "()";
@@ -292,11 +314,13 @@ public class ObjectMapperInjector {
                     getter = "instance." + fieldName;
                 }
 
-                String mapperName = getMapperVariableName(fieldHolder.type.getTypeName()+ Constants.MAPPER_CLASS_SUFFIX);
+                if (fieldHolder.type != null) {
+                    String mapperName = getMapperVariableName(fieldHolder.type.getTypeName() + Constants.MAPPER_CLASS_SUFFIX);
 
-                builder.beginControlFlow("if(" + getter + " != null)")
-                        .addStatement("$L.endParse(instance, " + getter + ")", mapperName)
-                        .endControlFlow();
+                    builder.beginControlFlow("if(" + getter + " != null)")
+                            .addStatement("$L.endParse(instance, " + getter + ", dataHolder)", mapperName)
+                            .endControlFlow();
+                }
             }
         }
         if (!TextUtils.isEmpty(mJsonObjectHolder.onCompleteCallback)) {
@@ -305,13 +329,17 @@ public class ObjectMapperInjector {
     }
 
     private MethodSpec getParseFieldMethod(boolean isUpdatable) {
-        MethodSpec.Builder builder = MethodSpec.methodBuilder("parseField")
-                .addAnnotation(Override.class)
+        MethodSpec.Builder builder = MethodSpec.methodBuilder("parseField" + (isUpdatable ? "Updatable" : ""))
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(mJsonObjectHolder.objectTypeName, "instance")
                 .addParameter(String.class, "fieldName")
-                .addParameter(JsonParser.class, JSON_PARSER_VARIABLE_NAME)
-                .addException(IOException.class);
+                .addParameter(JsonParser.class, JSON_PARSER_VARIABLE_NAME);
+        if (isUpdatable) {
+            builder.addParameter(ClassName.get(mJsonObjectHolder.packageName, "DataHolder"), "holder");
+        } else {
+            builder.addAnnotation(Override.class);
+        }
+        builder.addException(IOException.class);
 
         int parseFieldLines = addParseFieldLines(builder, isUpdatable);
 
@@ -382,9 +410,17 @@ public class ObjectMapperInjector {
     }
 
     private void addUpdateFieldFlags(TypeSpec.Builder builder) {
+        TypeSpec.Builder holderBuilder = TypeSpec.classBuilder("DataHolder");
         for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
-            builder.addField(FieldSpec.builder(TypeName.BOOLEAN, getIsFieldSetName(entry.getKey()), Modifier.PRIVATE).build());
+            String key = entry.getKey();
+            holderBuilder.addField(FieldSpec.builder(TypeName.BOOLEAN, getIsFieldSetName(key), Modifier.PRIVATE).build());
+            JsonFieldHolder holder = entry.getValue();
+            if (holder.inherits) {
+                holderBuilder.addField(Object.class, getDataHolderName(key));
+            }
         }
+        TypeSpec dataHolderTypeSpec = holderBuilder.build();
+        builder.addType(dataHolderTypeSpec);
     }
 
     private String getIsFieldSetName(String name) {
@@ -392,6 +428,10 @@ public class ObjectMapperInjector {
             name = Character.toUpperCase(name.charAt(0)) + name.substring(1);
         }
         return "is" + name + "Set";
+    }
+
+    private String getDataHolderName(String name) {
+        return name + "DataHolder";
     }
 
     private int addParseFieldLines(MethodSpec.Builder builder, boolean isUpdatable) {
@@ -431,9 +471,16 @@ public class ObjectMapperInjector {
 
                 if (fieldHolder.type != null) {
                     setFieldHolderJsonMapperVariableName(fieldHolder.type);
-                    fieldHolder.type.parse(builder, 1, setter, stringFormatArgs);
+                    if (fieldHolder.inherits) {
+                        String mapperName = getMapperVariableName(fieldHolder.type.getTypeName() + Constants.MAPPER_CLASS_SUFFIX),
+                                dataHolderName = getDataHolderName(entry.getKey());
+                        builder.addStatement("dataHolder.$L = $L.holder()", dataHolderName, mapperName)
+                                .addStatement("$L.parse($L, $L)", JSON_PARSER_VARIABLE_NAME, dataHolderName);
+                    } else {
+                        fieldHolder.type.parse(builder, 1, setter, stringFormatArgs);
+                    }
                     if (isUpdatable) {
-                        builder.addStatement(getIsFieldSetName(entry.getKey()) + " = true");
+                        builder.addStatement("holder." + getIsFieldSetName(entry.getKey()) + " = true");
                     }
                 }
 

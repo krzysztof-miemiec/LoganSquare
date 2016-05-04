@@ -25,6 +25,10 @@ public abstract class JsonMapper<T> {
      */
     public abstract T parse(JsonParser jsonParser) throws IOException;
 
+    public T parse(JsonParser jsonParser, Object dataHolder) throws IOException {
+        return null;
+    }
+
     /**
      * Parse a single field from a pre-configured JsonParser object into a T instance.
      *
@@ -43,7 +47,11 @@ public abstract class JsonMapper<T> {
      */
     public abstract void serialize(T object, JsonGenerator generator, boolean writeStartAndEnd) throws IOException;
 
-    public void endParse(Object parentInstance, T instance) throws IOException {
+    public void endParse(Object parentInstance, T instance, Object dataHolder) throws IOException {
+    }
+
+    public static Object holder() {
+        return null;
     }
 
     /**
