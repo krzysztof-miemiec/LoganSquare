@@ -50,7 +50,7 @@ public abstract class JsonMapper<T> {
     public void endParse(Object parentInstance, T instance, Object dataHolder) throws IOException {
     }
 
-    public static Object holder() {
+    public Object holder() {
         return null;
     }
 

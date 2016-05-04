@@ -179,6 +179,7 @@ public class ObjectMapperInjector {
         if (isUpdatable) {
             builder.addMethod(getParseFieldMethod(true));
             builder.addMethod(MethodSpec.methodBuilder("holder")
+                    .addModifiers(Modifier.PUBLIC)
                     .addAnnotation(Override.class)
                     .addStatement("return new DataHolder()")
                     .returns(TypeName.OBJECT)
@@ -241,7 +242,8 @@ public class ObjectMapperInjector {
                 .addParameter(mJsonObjectHolder.objectTypeName, "instance")
                 .addParameter(TypeName.OBJECT, "dataObject")
                 .addException(IOException.class)
-                .returns(TypeName.VOID);
+                .returns(TypeName.VOID)
+                .addStatement("DataHolder dataHolder = (DataHolder) dataObject");
 
         if (mJsonObjectHolder.onInheritCallback != null) {
             ExecutableElement inheritCallback = mJsonObjectHolder.onInheritCallback;
@@ -329,13 +331,13 @@ public class ObjectMapperInjector {
     }
 
     private MethodSpec getParseFieldMethod(boolean isUpdatable) {
-        MethodSpec.Builder builder = MethodSpec.methodBuilder("parseField" + (isUpdatable ? "Updatable" : ""))
+        MethodSpec.Builder builder = MethodSpec.methodBuilder("parseField")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(mJsonObjectHolder.objectTypeName, "instance")
                 .addParameter(String.class, "fieldName")
                 .addParameter(JsonParser.class, JSON_PARSER_VARIABLE_NAME);
         if (isUpdatable) {
-            builder.addParameter(ClassName.get(mJsonObjectHolder.packageName, "DataHolder"), "holder");
+            builder.addParameter(ClassName.get(mJsonObjectHolder.packageName, "DataHolder"), "dataHolder");
         } else {
             builder.addAnnotation(Override.class);
         }
@@ -471,16 +473,16 @@ public class ObjectMapperInjector {
 
                 if (fieldHolder.type != null) {
                     setFieldHolderJsonMapperVariableName(fieldHolder.type);
-                    if (fieldHolder.inherits) {
+                    if (fieldHolder.inherits && isUpdatable) {
                         String mapperName = getMapperVariableName(fieldHolder.type.getTypeName() + Constants.MAPPER_CLASS_SUFFIX),
                                 dataHolderName = getDataHolderName(entry.getKey());
                         builder.addStatement("dataHolder.$L = $L.holder()", dataHolderName, mapperName)
-                                .addStatement("$L.parse($L, $L)", JSON_PARSER_VARIABLE_NAME, dataHolderName);
+                                .addStatement("$L.parse($L, dataHolder.$L)", mapperName, JSON_PARSER_VARIABLE_NAME, dataHolderName);
                     } else {
                         fieldHolder.type.parse(builder, 1, setter, stringFormatArgs);
                     }
                     if (isUpdatable) {
-                        builder.addStatement("holder." + getIsFieldSetName(entry.getKey()) + " = true");
+                        builder.addStatement("dataHolder." + getIsFieldSetName(entry.getKey()) + " = true");
                     }
                 }
 

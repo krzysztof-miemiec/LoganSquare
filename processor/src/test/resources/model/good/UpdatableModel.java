@@ -35,7 +35,7 @@ public class UpdatableModel {
     }
 
     @JsonObject
-    public class InheritingModel {
+    public static class InheritingModel {
 
         @JsonField(isKey = true)
         public String string;
@@ -59,7 +59,7 @@ public class UpdatableModel {
 
         @JsonGetByKey
         public InheritingModel jsonGetByKey(String string) {
-            InheritableModel model = new InheritingModel();
+            InheritingModel model = new InheritingModel();
             model.testInt = 60;
             model.string = "abc";
             return model;
