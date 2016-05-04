@@ -412,7 +412,9 @@ public class ObjectMapperInjector {
     }
 
     private void addUpdateFieldFlags(TypeSpec.Builder builder) {
-        TypeSpec.Builder holderBuilder = TypeSpec.classBuilder("DataHolder");
+        TypeSpec.Builder holderBuilder = TypeSpec.classBuilder("DataHolder")
+                .addModifiers(Modifier.PUBLIC)
+                .addModifiers(Modifier.STATIC);
         for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
             String key = entry.getKey();
             holderBuilder.addField(FieldSpec.builder(TypeName.BOOLEAN, getIsFieldSetName(key), Modifier.PRIVATE).build());
