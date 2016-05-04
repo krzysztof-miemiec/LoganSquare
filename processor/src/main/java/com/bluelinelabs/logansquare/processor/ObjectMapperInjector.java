@@ -203,7 +203,10 @@ public class ObjectMapperInjector {
         builder
                 .addException(IOException.class);
         if (isSecondary) {
-            builder.addStatement("DataHolder dataHolder = (DataHolder) dataHolderObject");
+            builder.addStatement("DataHolder dataHolder = (DataHolder) dataHolderObject")
+                    .beginControlFlow("if(dataHolder == null)")
+                    .addStatement("dataHolder = new DataHolder()")
+                    .endControlFlow();
         }
         if (!mJsonObjectHolder.isAbstractClass) {
             builder.addStatement("$T instance = new $T()", mJsonObjectHolder.objectTypeName, mJsonObjectHolder.objectTypeName)
@@ -243,7 +246,10 @@ public class ObjectMapperInjector {
                 .addParameter(TypeName.OBJECT, "dataObject")
                 .addException(IOException.class)
                 .returns(TypeName.VOID)
-                .addStatement("DataHolder dataHolder = (DataHolder) dataObject");
+                .addStatement("DataHolder dataHolder = (DataHolder) dataObject")
+                .beginControlFlow("if(dataHolder == null)")
+                .addStatement("dataHolder = new DataHolder()")
+                .endControlFlow();
 
         if (mJsonObjectHolder.onInheritCallback != null) {
             ExecutableElement inheritCallback = mJsonObjectHolder.onInheritCallback;
