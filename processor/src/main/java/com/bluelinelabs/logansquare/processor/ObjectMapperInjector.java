@@ -317,10 +317,10 @@ public class ObjectMapperInjector {
                 }
 
                 if (fieldHolder.type != null) {
-                    String mapperName = getMapperVariableName(fieldHolder.type.getTypeName() + Constants.MAPPER_CLASS_SUFFIX);
-
+                    String mapperName = getMapperVariableName(fieldHolder.type.getTypeName() + Constants.MAPPER_CLASS_SUFFIX),
+                            dataHolderName = getDataHolderName(entry.getKey());
                     builder.beginControlFlow("if(" + getter + " != null)")
-                            .addStatement("$L.endParse(instance, " + getter + ", dataHolder)", mapperName)
+                            .addStatement("$L.endParse(instance, " + getter + ", dataHolder.$L)", mapperName, dataHolderName)
                             .endControlFlow();
                 }
             }
