@@ -72,7 +72,7 @@ public abstract class FieldType extends Type {
         }
     }
 
-    protected static String replaceLastLiteral(String string, String replacement) {
+    public static String replaceLastLiteral(String string, String replacement) {
         int pos = string.lastIndexOf("$L");
         if (pos > -1) {
             return string.substring(0, pos)

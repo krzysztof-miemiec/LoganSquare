@@ -6,6 +6,7 @@ import com.bluelinelabs.logansquare.LoganSquare;
 import com.bluelinelabs.logansquare.ParameterizedType;
 import com.bluelinelabs.logansquare.processor.type.Type;
 import com.bluelinelabs.logansquare.processor.type.Type.ClassNameObjectMapper;
+import com.bluelinelabs.logansquare.processor.type.field.FieldType;
 import com.bluelinelabs.logansquare.processor.type.field.ParameterizedTypeField;
 import com.bluelinelabs.logansquare.processor.type.field.TypeConverterFieldType;
 import com.bluelinelabs.logansquare.typeconverters.TypeConverter;
@@ -485,7 +486,7 @@ public class ObjectMapperInjector {
                         String mapperName = getMapperVariableName(fieldHolder.type.getTypeName() + Constants.MAPPER_CLASS_SUFFIX),
                                 dataHolderName = getDataHolderName(entry.getKey());
                         builder.addStatement("dataHolder.$L = $L.holder()", dataHolderName, mapperName)
-                                .addStatement("$L.parse($L, dataHolder.$L)", mapperName, JSON_PARSER_VARIABLE_NAME, dataHolderName);
+                                .addStatement(FieldType.replaceLastLiteral(setter, "$L.parse($L, dataHolder.$L)"), stringFormatArgs[0], mapperName, JSON_PARSER_VARIABLE_NAME, dataHolderName);
                     } else {
                         fieldHolder.type.parse(builder, 1, setter, stringFormatArgs);
                     }
