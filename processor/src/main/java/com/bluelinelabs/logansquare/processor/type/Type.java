@@ -34,6 +34,7 @@ public abstract class Type {
     }
 
     public static Type typeFor(TypeMirror typeMirror, TypeMirror typeConverterType, Elements elements, Types types) {
+
         TypeMirror genericClassTypeMirror = types.erasure(typeMirror);
         boolean hasTypeConverter = typeConverterType != null && !typeConverterType.toString().equals("void");
 

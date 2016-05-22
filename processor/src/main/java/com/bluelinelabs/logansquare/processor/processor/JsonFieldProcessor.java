@@ -24,6 +24,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.MirroredTypeException;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -80,11 +81,19 @@ public class JsonFieldProcessor extends Processor {
             typeConverterType = mte.getTypeMirror();
         }
 
+        boolean isSetter = false, isGetter = false;
+
+        if (element.getKind() == ElementKind.METHOD) {
+            ExecutableElement executableElement = (ExecutableElement) element;
+            isSetter = executableElement.getParameters().size() == 1;
+            isGetter = executableElement.getParameters().size() == 0;
+        }
+
         String[] fieldName = annotation.name();
 
         JsonIgnore ignoreAnnotation = element.getAnnotation(JsonIgnore.class);
-        boolean shouldParse = ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.SERIALIZE_ONLY;
-        boolean shouldSerialize = ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.PARSE_ONLY;
+        boolean shouldParse = !isGetter && (ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.SERIALIZE_ONLY);
+        boolean shouldSerialize = !isSetter && (ignoreAnnotation == null || ignoreAnnotation.ignorePolicy() == IgnorePolicy.PARSE_ONLY);
         boolean isKey = annotation.isKey();
         boolean inherits = annotation.inherits();
 
@@ -105,9 +114,23 @@ public class JsonFieldProcessor extends Processor {
             return false;
         }
 
-        if (element.getModifiers().contains(PRIVATE) && (TextUtils.isEmpty(JsonFieldHolder.getGetter(element, elements)) || TextUtils.isEmpty(JsonFieldHolder.getSetter(element, elements)))) {
+        if (element.getKind() == ElementKind.FIELD && element.getModifiers().contains(PRIVATE) && (TextUtils.isEmpty(JsonFieldHolder.getGetter(element, elements)) || TextUtils.isEmpty(JsonFieldHolder.getSetter(element, elements)))) {
             error(element, "@%s annotation can only be used on private fields if both getter and setter are present.", JsonField.class.getSimpleName());
             return false;
+        } else if (element.getKind() == ElementKind.METHOD) {
+            ExecutableElement executableElement = (ExecutableElement) element;
+            String[] names = element.getAnnotation(JsonField.class).name();
+            if (names.length == 0) {
+                error(element, "@%s annotations used on methods require name to be present.", JsonField.class.getSimpleName());
+            }
+            int parameterCount = executableElement.getParameters().size();
+            if (parameterCount == 0) {
+                if (executableElement.getReturnType().getKind() == TypeKind.VOID) {
+                    error(element, "Getter methods annotated as @%s must return non-void value.", JsonField.class.getSimpleName());
+                }
+            } else if (parameterCount > 1) {
+                error(element, "Setter methods annotated as @%s must have exactly one parameter.", JsonField.class.getSimpleName());
+            }
         }
 
         return true;

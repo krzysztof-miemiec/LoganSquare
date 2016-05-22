@@ -11,7 +11,7 @@ allprojects {
     apply plugin: 'idea'
 
     group = 'com.bluelinelabs'
-    version = '1.3.7-updatable'
+    version = '1.3.7-plus'
 }
 
 subprojects {
@@ -54,19 +54,15 @@ subprojects {
                     node.appendNode('description', 'Screaming fast JSON parsing and serialization library for Android.')
                     node.appendNode('url', 'https://github.com/bluelinelabs/LoganSquare')
 
-                    def organizationNode = node.appendNode('organization')
-                    organizationNode.appendNode('name', 'BlueLine Labs')
-                    organizationNode.appendNode('url', 'http://bluelinelabs.com')
-
                     def scmNode = node.appendNode('scm')
-                    scmNode.appendNode('connection', 'scm:git:https://github.com/bluelinelabs/LoganSquare')
-                    scmNode.appendNode('developerConnection', 'scm:git:https://github.com/bluelinelabs/LoganSquare')
-                    scmNode.appendNode('url', 'https://github.com/bluelinelabs/LoganSquare')
+                    scmNode.appendNode('connection', 'scm:git:https://github.com/rs411/LoganSquare')
+                    scmNode.appendNode('developerConnection', 'scm:git:https://github.com/rs411/LoganSquare')
+                    scmNode.appendNode('url', 'https://github.com/rs411/LoganSquare')
 
                     def developersNode = node.appendNode('developers')
                     def ericNode = developersNode.appendNode('developer')
-                    ericNode.appendNode('id', 'erickuck')
-                    ericNode.appendNode('name', 'Eric Kuck')
+                    ericNode.appendNode('id', 'rs411')
+                    ericNode.appendNode('name', 'Krzysztof Miemiec')
 
                     def licensesNode = node.appendNode('licenses')
                     def licenseNode = licensesNode.appendNode('license')
@@ -87,20 +83,19 @@ subprojects {
         publish = false
 
         pkg {
-            repo = 'bluelinelabs'
-            userOrg = 'bluelinelabs'
+            repo = 'maven'
             name = 'LoganSquare'
             desc = 'Screaming fast JSON parsing and serialization library for Android.'
-            websiteUrl = 'https://github.com/bluelinelabs/LoganSquare'
-            issueTrackerUrl = 'https://github.com/bluelinelabs/LoganSquare/issues'
-            vcsUrl = 'https://github.com/bluelinelabs/LoganSquare'
+            websiteUrl = 'https://github.com/rs411/LoganSquare'
+            issueTrackerUrl = 'https://github.com/rs411/LoganSquare/issues'
+            vcsUrl = 'https://github.com/rs411/LoganSquare'
             licenses = ['Apache-2.0']
             labels = ['json', 'android', 'parser', 'serializer', 'jackson']
             publicDownloadNumbers = true
             version {
                 name = project.version
                 gpg {
-                    sign = true
+                    sign = false
                     passphrase = project.hasProperty('bintray_gpg_passphrase') ? bintray_gpg_passphrase : ''
                 }
                 mavenCentralSync {

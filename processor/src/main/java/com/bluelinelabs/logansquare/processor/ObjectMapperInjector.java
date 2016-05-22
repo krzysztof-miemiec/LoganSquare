@@ -424,10 +424,12 @@ public class ObjectMapperInjector {
                 .addModifiers(Modifier.STATIC);
         for (Map.Entry<String, JsonFieldHolder> entry : mJsonObjectHolder.fieldMap.entrySet()) {
             String key = entry.getKey();
-            holderBuilder.addField(FieldSpec.builder(TypeName.BOOLEAN, getIsFieldSetName(key), Modifier.PRIVATE).build());
             JsonFieldHolder holder = entry.getValue();
-            if (holder.inherits) {
-                holderBuilder.addField(Object.class, getDataHolderName(key));
+            if (holder.shouldParse) {
+                holderBuilder.addField(FieldSpec.builder(TypeName.BOOLEAN, getIsFieldSetName(key), Modifier.PRIVATE).build());
+                if (holder.inherits) {
+                    holderBuilder.addField(Object.class, getDataHolderName(key));
+                }
             }
         }
         TypeSpec dataHolderTypeSpec = holderBuilder.build();

@@ -4,4 +4,5 @@ ext.artifactId = 'logansquare'
 
 dependencies {
     compile 'com.fasterxml.jackson.core:jackson-core:2.5.1'
+    compile "com.squareup.retrofit2:retrofit:2.0.0"
 }
