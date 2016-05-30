@@ -298,19 +298,18 @@ public class ObjectMapperInjector {
                 JsonFieldHolder fieldHolder = entry.getValue();
                 if (fieldHolder.shouldParse) {
                     builder.beginControlFlow("if(!dataHolder." + getIsFieldSetName(fieldName) + ")");
-                }
-                String getter;
-                if (fieldHolder.hasGetter()) {
-                    getter = "sourceInstance." + fieldHolder.getterMethod + "()";
-                } else {
-                    getter = "sourceInstance." + fieldName;
-                }
-                if (fieldHolder.hasSetter()) {
-                    builder.addStatement("instance.$L($L)", fieldHolder.setterMethod, getter);
-                } else {
-                    builder.addStatement("instance.$L = $L", fieldName, getter);
-                }
-                if (fieldHolder.shouldParse) {
+
+                    String getter;
+                    if (fieldHolder.hasGetter()) {
+                        getter = "sourceInstance." + fieldHolder.getterMethod + "()";
+                    } else {
+                        getter = "sourceInstance." + fieldName;
+                    }
+                    if (fieldHolder.hasSetter()) {
+                        builder.addStatement("instance.$L($L)", fieldHolder.setterMethod, getter);
+                    } else {
+                        builder.addStatement("instance.$L = $L", fieldName, getter);
+                    }
                     builder.endControlFlow();
                 }
             }
