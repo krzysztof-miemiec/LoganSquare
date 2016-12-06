@@ -224,7 +224,9 @@ public class ObjectMapperInjector {
             builder.beginControlFlow("while ($L.nextToken() != $T.END_OBJECT)", JSON_PARSER_VARIABLE_NAME, JsonToken.class)
                     .addStatement("String fieldName = $L.getCurrentName()", JSON_PARSER_VARIABLE_NAME)
                     .addStatement("$L.nextToken()", JSON_PARSER_VARIABLE_NAME)
-                    .addStatement("parseField(instance, fieldName, $L" + (isUpdatable ? ", dataHolder" : "") + ")", JSON_PARSER_VARIABLE_NAME)
+                    .addStatement("parseField(instance, fieldName, $L" + (isUpdatable
+                                                                          ? ", dataHolder"
+                                                                          : "") + ")", JSON_PARSER_VARIABLE_NAME)
                     .addStatement("$L.skipChildren()", JSON_PARSER_VARIABLE_NAME)
                     .endControlFlow();
             if (!mJsonObjectHolder.inheritsFromParent) {
@@ -278,7 +280,6 @@ public class ObjectMapperInjector {
             if (keyField == null) {
                 throw new RuntimeException("Missing @JsonField with @JsonKey annotation for getByKey() method");
             }
-
 
             StringBuilder stringBuilder = new StringBuilder(
                     "$T sourceInstance = instance.$L(instance.");
@@ -510,6 +511,9 @@ public class ObjectMapperInjector {
         Set<ClassNameObjectMapper> usedJsonObjectMappers = new HashSet<>();
 
         for (JsonFieldHolder holder : mJsonObjectHolder.fieldMap.values()) {
+            if (holder.type == null) {
+                throw new NullPointerException("No type for " + holder.fieldName[0] + " in " + mJsonObjectHolder.objectTypeName.toString());
+            }
             usedJsonObjectMappers.addAll(holder.type.getUsedJsonObjectMappers());
         }
 
