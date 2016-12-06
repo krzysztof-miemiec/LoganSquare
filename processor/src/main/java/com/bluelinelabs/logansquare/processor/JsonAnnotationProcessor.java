@@ -86,7 +86,8 @@ public class JsonAnnotationProcessor extends AbstractProcessor {
         } catch (Throwable e) {
             StringWriter stackTrace = new StringWriter();
             e.printStackTrace(new PrintWriter(stackTrace));
-            error("Exception while processing Json classes. Stack trace incoming:\n%s", stackTrace.toString());
+
+            error("Exception while processing Json classes: %s\nStack trace incoming:\n%s", e.getMessage(), stackTrace.toString());
             return false;
         }
     }
