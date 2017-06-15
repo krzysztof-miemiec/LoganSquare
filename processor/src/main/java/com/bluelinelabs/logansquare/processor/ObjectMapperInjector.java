@@ -348,7 +348,7 @@ public class ObjectMapperInjector {
                 .addParameter(String.class, "fieldName")
                 .addParameter(JsonParser.class, JSON_PARSER_VARIABLE_NAME);
         if (isUpdatable) {
-            builder.addParameter(ClassName.get(mJsonObjectHolder.packageName, "DataHolder"), "dataHolder");
+            builder.addParameter(ClassName.get(mJsonObjectHolder.packageName + "." + mJsonObjectHolder.injectedClassName, "DataHolder"), "dataHolder");
         } else {
             builder.addAnnotation(Override.class);
         }
